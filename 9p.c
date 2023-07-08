@@ -82,11 +82,11 @@ do9p(Fcall *t, Fcall *r)
 		r->ename = "Bad S2M conversion";
 		goto err;
 	}
-	if(write(srvfd, tbuf, n) != n){
+	if(write(outfd, tbuf, n) != n){
 		r->ename = "Bad 9p write";
 		goto err;
 	}
-	if((n = read9pmsg(srvfd, rbuf, msize)) == -1){
+	if((n = read9pmsg(infd, rbuf, msize)) == -1){
 		r->ename = "Bad 9p read";
 		goto err;
 	}

@@ -37,7 +37,7 @@ extern FILE	*logfile;
 extern FFid	*rootfid;
 extern FFid	*authfid;
 extern int	msize;
-extern int	srvfd;
+extern int	infd, outfd;
 extern int	debug;
 
 void	init9p(void);
