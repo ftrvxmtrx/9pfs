@@ -36,6 +36,10 @@ default.
 .It Fl U
 The 9P service is a UNIX-domain
 socket.
+.It Fl T
+Communication to the 9p service will
+be done through a dp9ik tls tunnel through
+\fBtlsclient\fP(1).
 .It Fl A Ar aname
 The attach name to send to the 9P service.
 .It Fl p Ar port

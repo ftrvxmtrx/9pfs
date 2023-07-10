@@ -47,7 +47,7 @@ FILE	*logfile;
 FFid	*rootfid;
 FFid	*authfid;
 int	msize;
-int	srvfd;
+int	infd, outfd;
 int	debug;
 
 int
@@ -459,27 +459,81 @@ struct fuse_operations fsops = {
 	.chmod =	fschmod
 };
 
+static int uflag, tflag;
+
+static void
+doconnect(char *name, char *port)
+{
+	struct sockaddr_un	uaddr;
+	struct sockaddr		*addr;
+	struct addrinfo		*ainfo;
+	int			e, n, alen;
+	int			p1[2], p2[2];
+
+	if(tflag){
+		if(pipe(p1) < 0 || pipe(p2) < 0)
+			err(1, "Could not create pipe");
+		switch(fork()){
+		case -1:
+			err(1, "fork");
+			break;
+		case 0:
+			close(p1[0]);
+			dup2(p1[1], 1);
+
+			dup2(p2[0], 0);
+			close(p2[1]);
+
+			execlp("tlsclient", "tlsclient", "-h", name, "-p", port, NULL);
+			err(1, "Could not exec tlsclient");
+			break;
+		default:
+			infd = p1[0];
+			close(p1[1]);
+
+			close(p2[0]);
+			outfd = p2[1];
+			break;
+		}
+		return;
+	}
+
+	if(uflag){
+		uaddr.sun_family = AF_UNIX;
+		n = sizeof(uaddr.sun_path);
+		strecpy(uaddr.sun_path, uaddr.sun_path+n, name);
+		addr = (struct sockaddr*)&uaddr;
+		alen = sizeof(uaddr);
+	}else{
+		if((e = getaddrinfo(name, port, NULL, &ainfo)) != 0)
+			errx(1, "%s", gai_strerror(e));
+		addr = ainfo->ai_addr;
+		alen = ainfo->ai_addrlen;
+	}
+	infd = outfd = socket(addr->sa_family, SOCK_STREAM, 0);
+	if(connect(infd, addr, alen) == -1)
+		err(1, "Could not connect to 9p server");
+	if(uflag == 0)
+		freeaddrinfo(ainfo);
+}
+
 int
 main(int argc, char *argv[])
 {
 	AuthInfo		*ai;
-	struct sockaddr_un	uaddr;
-	struct sockaddr		*addr;
-	struct addrinfo		*ainfo;
 	struct passwd		*pw;
 	char			logstr[100], *fusearg[argc], **fargp, port[10], user[30], *aname;
-	int			ch, doauth, uflag, n, alen, e;
+	int			ch, doauth;
 
 	fargp = fusearg;
 	*fargp++ = *argv;
 	aname = NULL;
 	doauth = 0;
-	uflag = 0;
 	strecpy(port, port+sizeof(port), "564");
 	if((pw = getpwuid(getuid())) == NULL)
 		errx(1, "Could not get user");
 	strecpy(user, user+sizeof(user), pw->pw_name);
-	while((ch = getopt(argc, argv, ":dnUap:u:A:o:f")) != -1){
+	while((ch = getopt(argc, argv, ":dnUTap:u:A:o:f")) != -1){
 		switch(ch){
 		case 'd':
 			debug++;
@@ -489,6 +543,9 @@ main(int argc, char *argv[])
 			break;
 		case 'U':
 			uflag++;
+			break;
+		case 'T':
+			tflag++;
 			break;
 		case 'a':
 			doauth++;
@@ -527,24 +584,7 @@ main(int argc, char *argv[])
 		setlinebuf(logfile);
 	}
 
-	if(uflag){
-		uaddr.sun_family = AF_UNIX;
-		n = sizeof(uaddr.sun_path);
-		strecpy(uaddr.sun_path, uaddr.sun_path+n, argv[0]);
-		addr = (struct sockaddr*)&uaddr;
-		alen = sizeof(uaddr);
-	}else{
-		if((e = getaddrinfo(argv[0], port, NULL, &ainfo)) != 0)
-			errx(1, "%s", gai_strerror(e));
-		addr = ainfo->ai_addr;
-		alen = ainfo->ai_addrlen;
-	}
-	srvfd = socket(addr->sa_family, SOCK_STREAM, 0);
-	if(connect(srvfd, addr, alen) == -1)
-		err(1, "Could not connect to 9p server");
-	if(uflag == 0)
-		freeaddrinfo(ainfo);
-
+	doconnect(argv[0], port);
 	init9p();
 	msize = _9pversion(Msize);
 	if(doauth){
