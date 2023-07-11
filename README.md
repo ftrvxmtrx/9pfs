@@ -45,11 +45,17 @@ sys     0m0.753s
 Installation
 ------------
 If you are using OpenBSD, then
+
 ```
 $ make
 $ doas make install
 ```
+
 will perform the installation. If you are using another operating
 system of your choice, edit the the BIN and MAN variables of the
 Makefile to choose where you want to install the 9pfs binary and
 man page, respectively.
+
+In order to connect to dp9ik-enabled servers you will need
+[tlsclient](https://git.sr.ht/~moody/tlsclient) installed separately
+(see option `-T` in the man page).
