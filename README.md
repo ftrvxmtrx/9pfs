@@ -4,7 +4,7 @@ Unlike 9pfuse, it works equally well on Linux, OpenBSD, FreeBSD, and
 any other OS with a FUSE implementation.
 
 It is also faster than 9pfuse. Below is the time it took to run du
--a on the /sys/src directory on a [plan9front](http://9front.org)
+-a on the /sys/src directory on a [9front](http://9front.org)
 installation mounted by 9pfs.
 
 ```
