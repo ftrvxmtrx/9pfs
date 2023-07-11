@@ -47,7 +47,7 @@ Installation
 If you are using OpenBSD, then
 ```
 $ make
-$ sudo make install
+$ doas make install
 ```
 will perform the installation. If you are using another operating
 system of your choice, edit the the BIN and MAN variables of the
