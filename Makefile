@@ -3,8 +3,8 @@ DESTDIR?=
 PREFIX?=/usr/local
 BIN=${DESTDIR}${PREFIX}/bin
 MAN=${DESTDIR}${PREFIX}/share/man/man1
-FUSE_CFLAGS!=pkg-config --cflags fuse
-FUSE_LDFLAGS!=pkg-config --libs fuse
+FUSE_CFLAGS=$$(pkg-config --cflags fuse)
+FUSE_LDFLAGS=$$(pkg-config --libs fuse)
 CFLAGS?=-O2 -pipe -g -Wall
 CFLAGS+=-D_FILE_OFFSET_BITS=64\
 	-DFUSE_USE_VERSION=26\
