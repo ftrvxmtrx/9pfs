@@ -3,6 +3,7 @@
 #include <sys/un.h>
 
 #include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <netdb.h>
 
 #include <unistd.h>
@@ -465,9 +466,8 @@ static void
 doconnect(char *name, char *port)
 {
 	struct sockaddr_un	uaddr;
-	struct sockaddr		*addr;
-	struct addrinfo		*ainfo;
-	int			e, n, alen;
+	struct addrinfo		*a, *ainfo, hint;
+	int			e, n, yes;
 	int			p1[2], p2[2];
 
 	if(tflag){
@@ -502,19 +502,35 @@ doconnect(char *name, char *port)
 		uaddr.sun_family = AF_UNIX;
 		n = sizeof(uaddr.sun_path);
 		strecpy(uaddr.sun_path, uaddr.sun_path+n, name);
-		addr = (struct sockaddr*)&uaddr;
-		alen = sizeof(uaddr);
-	}else{
-		if((e = getaddrinfo(name, port, NULL, &ainfo)) != 0)
-			errx(1, "%s", gai_strerror(e));
-		addr = ainfo->ai_addr;
-		alen = ainfo->ai_addrlen;
+		infd = outfd = socket(AF_UNIX, SOCK_STREAM, 0);
+		if(connect(infd, (struct sockaddr *)&uaddr, sizeof(uaddr)) == -1)
+			goto err;
+		return;
 	}
-	infd = outfd = socket(addr->sa_family, SOCK_STREAM, 0);
-	if(connect(infd, addr, alen) == -1)
-		err(1, "Could not connect to 9p server");
-	if(uflag == 0)
-		freeaddrinfo(ainfo);
+
+	memset(&hint, 0, sizeof(hint));
+	hint.ai_flags = AI_ADDRCONFIG;
+	hint.ai_family = AF_UNSPEC;
+	hint.ai_socktype = SOCK_STREAM;
+	hint.ai_protocol = IPPROTO_TCP;
+	if((e = getaddrinfo(name, port, &hint, &ainfo)) != 0)
+		errx(1, "%s", gai_strerror(e));
+	for(a = ainfo; a != NULL; a = a->ai_next){
+		if((infd = outfd = socket(a->ai_family, a->ai_socktype, a->ai_protocol)) < 0)
+			continue;
+		if(connect(infd, a->ai_addr, a->ai_addrlen) == 0){
+			yes = 1;
+			setsockopt(infd, SOL_SOCKET, TCP_NODELAY, &yes, sizeof(yes));
+			break;
+		}
+		close(infd);
+		infd = -1;
+	}
+	freeaddrinfo(ainfo);
+	if(infd >= 0)
+		return;
+err:
+	err(1, "Could not connect to 9p server");
 }
 
 int
