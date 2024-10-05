@@ -286,10 +286,11 @@ fsread(const char *path, char *buf, size_t size, off_t off,
 	int 	r;
 
 	if(iscachectl(path)){
-		size = CACHECTLSIZE;
-		if(off >= size)
+		if(off >= CACHECTLSIZE)
 			return 0;
-		memcpy(buf, &"cleared\n"[off], size - off);
+		if(size > CACHECTLSIZE - off)
+			size = CACHECTLSIZE - off;
+		memcpy(buf, &"cleared\n"[off], size);
 		clearcache(path);
 		return size;
 	}
