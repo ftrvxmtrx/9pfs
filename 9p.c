@@ -97,6 +97,7 @@ do9p(Fcall *t, Fcall *r)
 	if(r->tag != t->tag)
 		errx(1, "tag mismatch");
 	if(r->type != t->type+1){
+		r->ename = "Bad 9p reply type";
 		goto err;
 	}
 	return 0;
@@ -269,10 +270,11 @@ _9popen(FFid *f)
 	if(do9p(&topen, &ropen) == -1)
 		return -1;
 	f->qid = ropen.qid;
-	if(ropen.iounit != 0)
+	if(ropen.iounit != 0 && ropen.iounit < msize)
 		f->iounit = ropen.iounit;
 	else
-		f->iounit = msize - IOHDRSZ;
+		f->iounit = msize;
+	f->iounit -= IOHDRSZ;
 	return 0;
 }
 
@@ -293,10 +295,11 @@ _9pcreate(FFid *f, char *name, int perm, int isdir)
 		_9pclunk(f);
 		return NULL;
 	}
-	if(rcreate.iounit != 0)
+	if(rcreate.iounit != 0 && rcreate.iounit < msize)
 		f->iounit = rcreate.iounit;
 	else
-		f->iounit = msize - IOHDRSZ;
+		f->iounit = msize;
+	f->iounit -= IOHDRSZ;
 	f->qid = rcreate.qid;
 	return f;
 }
@@ -423,8 +426,10 @@ _9pread(FFid *f, char *buf, u32int n)
 		DPRINT("_9pread n is %d\n", n);
 		tread.offset = f->offset;
 		tread.count = n < f->iounit ? n : f->iounit;
-		if(do9p(&tread, &rread) == -1)
+		if(do9p(&tread, &rread) == -1) {
+			DPRINT("_9pread encountered error: %s\n", rread.ename);
 			return -1;
+		}
 		memcpy(buf+tot, rread.data, rread.count);
 		f->offset += rread.count;
 		tot += rread.count;
