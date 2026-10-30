@@ -658,8 +658,7 @@ main(int argc, char *argv[])
 		errx(1, "Could not stat root");
 
 	DPRINT("About to fuse_main\n");
-	fuse_main(fuseargp - fusearg, fusearg, &fsops, NULL);
-	exit(0);
+	return fuse_main(fuseargp - fusearg, fusearg, &fsops, NULL);
 }
 
 void
