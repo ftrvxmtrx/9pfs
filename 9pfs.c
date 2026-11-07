@@ -164,6 +164,9 @@ fsrename(const char *opath, const char *npath)
 
 	if(iscachectl(opath))
 		return -EACCES;
+	if((f = _9pwalk(npath)) != NULL)
+		if(_9premove(f) == -1)
+			return -EACCES;
 	if((f = _9pwalk(opath)) == NULL)
 		return -ENOENT;
 	dname = estrdup(npath);
