@@ -148,15 +148,25 @@ fstruncate(const char *path, off_t off)
 	return 0;
 }
 
+static void
+nulldir(Dir *d)
+{
+	memset(d, ~0, sizeof(Dir));
+	d->name = d->uid = d->gid = d->muid = "";
+}
+
 static int
 fsrename(const char *opath, const char *npath)
 {
-	Dir *d;
+	Dir d;
 	FFid *f;
 	char *dname, *bname;
 
 	if(iscachectl(opath))
 		return -EACCES;
+	if((f = _9pwalk(npath)) != NULL)
+		if(_9premove(f) == -1)
+			return -EACCES;
 	if((f = _9pwalk(opath)) == NULL)
 		return -ENOENT;
 	dname = estrdup(npath);
@@ -166,22 +176,16 @@ fsrename(const char *opath, const char *npath)
 		free(dname);
 		return -EACCES;
 	}
+	nulldir(&d);
 	*bname++ = '\0';
-	if((d = _9pstat(f)) == NULL){
+	d.name = bname;
+	if(_9pwstat(f, &d) == -1){
 		_9pclunk(f);
 		free(dname);
-		return -EIO;
-	}
-	d->name = bname;
-	if(_9pwstat(f, d) == -1){
-		_9pclunk(f);
-		free(dname);
-		free(d);
 		return -EACCES;
 	}
 	_9pclunk(f);
 	free(dname);
-	free(d);
 	clearcache(opath);
 	return 0;
 }
